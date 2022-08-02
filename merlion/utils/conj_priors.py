@@ -168,10 +168,7 @@ class ConjPrior(ABC):
 
         # Initialize dt if needed; this only happens for cases 1 and 2 above
         if self.dt is None:
-            if isinstance(x, TimeSeries):
-                tf = x.tf
-            else:
-                tf = x[0]
+            tf = x.tf if isinstance(x, TimeSeries) else x[0]
             if tf != self.t0:
                 self.dt = tf - self.t0
 
@@ -497,12 +494,12 @@ class MVNormInvWishart(ConjPrior):
         if mvt is not None:
             rv = mvt(shape=shape, loc=self.mu_0, df=dof, allow_singular=True)
             ret = self._process_return(x=x_np, rv=rv, return_rv=return_rv, log=log)
+        elif x is None or return_rv:
+            raise ValueError(
+                f"The scipy version you have installed ({scipy.__version__}) does not support a multivariate-t "
+                f"random variable Please specify a non-``None`` value of ``x`` and set ``return_rv = False``."
+            )
         else:
-            if x is None or return_rv:
-                raise ValueError(
-                    f"The scipy version you have installed ({scipy.__version__}) does not support a multivariate-t "
-                    f"random variable Please specify a non-``None`` value of ``x`` and set ``return_rv = False``."
-                )
             ret = _mvt_pdf(x=x_np, mu=self.mu_0, Sigma=shape, nu=dof, log=log)
 
         if return_updated:

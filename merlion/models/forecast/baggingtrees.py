@@ -128,41 +128,38 @@ class BaggingTreeForecaster(ForecasterBase, MultiVariateAutoRegressionMixin):
             # since the model may predict multiple steps, we concatenate all the first steps together
             pred = pred[:, 0].reshape(-1)
 
-        # multivariate case, sequence or 1-step autoregression
-        else:
-            # sequence mode, set prediction_stride = max_forecast_steps
-            if self.prediction_stride > 1:
-                max_forecast_steps = seq_ar_common.max_feasible_forecast_steps(train_data, self.maxlags)
-                if self.max_forecast_steps > max_forecast_steps:
-                    logger.warning(
-                        f"With train data of length {len(train_data)} and "
-                        f"maxlags={self.maxlags}, the maximum supported forecast "
-                        f"steps is {max_forecast_steps}, but got "
-                        f"max_forecast_steps={self.max_forecast_steps}. Reducing "
-                        f"to the maximum permissible value or switch to "
-                        f"'training_mode = autogression'."
-                    )
-                    self.config.max_forecast_steps = max_forecast_steps
+        elif self.prediction_stride > 1:
+            max_forecast_steps = seq_ar_common.max_feasible_forecast_steps(train_data, self.maxlags)
+            if self.max_forecast_steps > max_forecast_steps:
                 logger.warning(
-                    f"For multivariate dataset, reset prediction_stride = max_forecast_steps = {self.max_forecast_steps} "
+                    f"With train data of length {len(train_data)} and "
+                    f"maxlags={self.maxlags}, the maximum supported forecast "
+                    f"steps is {max_forecast_steps}, but got "
+                    f"max_forecast_steps={self.max_forecast_steps}. Reducing "
+                    f"to the maximum permissible value or switch to "
+                    f"'training_mode = autogression'."
                 )
-                self.config.prediction_stride = self.max_forecast_steps
-                # process train data
-                (inputs_train, labels_train, labels_train_ts) = seq_ar_common.process_rolling_train_data(
-                    train_data, self.target_seq_index, self.maxlags, self.prediction_stride, self.sampling_mode
-                )
-                self.model.fit(inputs_train, labels_train)
-                prior = np.atleast_2d(inputs_train[-1])
-                forecast_result = self.model.predict(prior)
-                self._forecast = forecast_result.reshape(-1)
-                # since the model may predict multiple steps, we concatenate all the first steps together
-                pred = self.model.predict(np.atleast_2d(inputs_train))[:, 0].reshape(-1)
-            else:
-                # autoregression mode
-                prior_forecast, labels_train_ts, pred = self.autoregression_train(
-                    data=train_data, maxlags=self.maxlags, sampling_mode=self.sampling_mode
-                )
-                self._forecast = prior_forecast
+                self.config.max_forecast_steps = max_forecast_steps
+            logger.warning(
+                f"For multivariate dataset, reset prediction_stride = max_forecast_steps = {self.max_forecast_steps} "
+            )
+            self.config.prediction_stride = self.max_forecast_steps
+            # process train data
+            (inputs_train, labels_train, labels_train_ts) = seq_ar_common.process_rolling_train_data(
+                train_data, self.target_seq_index, self.maxlags, self.prediction_stride, self.sampling_mode
+            )
+            self.model.fit(inputs_train, labels_train)
+            prior = np.atleast_2d(inputs_train[-1])
+            forecast_result = self.model.predict(prior)
+            self._forecast = forecast_result.reshape(-1)
+            # since the model may predict multiple steps, we concatenate all the first steps together
+            pred = self.model.predict(np.atleast_2d(inputs_train))[:, 0].reshape(-1)
+        else:
+            # autoregression mode
+            prior_forecast, labels_train_ts, pred = self.autoregression_train(
+                data=train_data, maxlags=self.maxlags, sampling_mode=self.sampling_mode
+            )
+            self._forecast = prior_forecast
 
         return (UnivariateTimeSeries(labels_train_ts, pred, self.target_name).to_ts(), None)
 
@@ -191,23 +188,21 @@ class BaggingTreeForecaster(ForecasterBase, MultiVariateAutoRegressionMixin):
 
         if time_series_prev is None:
             yhat = self._forecast[: len(t)]
+        elif self.dim == 1:
+            time_series_prev_no_ts = seq_ar_common.process_one_step_prior(
+                time_series_prev, self.maxlags, self.sampling_mode
+            )
+            yhat = self._hybrid_forecast(np.atleast_2d(time_series_prev_no_ts), len(t)).reshape(-1)
+        elif self.prediction_stride > 1:
+            time_series_prev_no_ts = seq_ar_common.process_one_step_prior(
+                time_series_prev, self.maxlags, self.sampling_mode
+            )
+            yhat = self.model.predict(np.atleast_2d(time_series_prev_no_ts)).reshape(-1)
+            yhat = yhat[: len(t)]
         else:
-            if self.dim == 1:
-                time_series_prev_no_ts = seq_ar_common.process_one_step_prior(
-                    time_series_prev, self.maxlags, self.sampling_mode
-                )
-                yhat = self._hybrid_forecast(np.atleast_2d(time_series_prev_no_ts), len(t)).reshape(-1)
-            else:
-                if self.prediction_stride > 1:
-                    time_series_prev_no_ts = seq_ar_common.process_one_step_prior(
-                        time_series_prev, self.maxlags, self.sampling_mode
-                    )
-                    yhat = self.model.predict(np.atleast_2d(time_series_prev_no_ts)).reshape(-1)
-                    yhat = yhat[: len(t)]
-                else:
-                    yhat = self.autoregression_forecast(
-                        time_series_prev, maxlags=self.maxlags, forecast_steps=len(t), sampling_mode=self.sampling_mode
-                    )
+            yhat = self.autoregression_forecast(
+                time_series_prev, maxlags=self.maxlags, forecast_steps=len(t), sampling_mode=self.sampling_mode
+            )
 
         forecast = (
             UnivariateTimeSeries(name=self.target_name, time_stamps=t, values=yhat).to_ts().align(reference=time_stamps)
@@ -224,10 +219,13 @@ class BaggingTreeForecaster(ForecasterBase, MultiVariateAutoRegressionMixin):
         if steps is None:
             steps = self.max_forecast_steps
 
-        pred = seq_ar_common.hybrid_forecast(
-            model=self.model, inputs=inputs, steps=steps, prediction_stride=self.prediction_stride, maxlags=self.maxlags
+        return seq_ar_common.hybrid_forecast(
+            model=self.model,
+            inputs=inputs,
+            steps=steps,
+            prediction_stride=self.prediction_stride,
+            maxlags=self.maxlags,
         )
-        return pred
 
     def set_data_already_transformed(self):
         self._input_already_transformed = True

@@ -59,15 +59,14 @@ class ForecastingDetectorBase(ForecasterBase, DetectorBase, ABC):
         yhat = forecast.univariates[forecast.names[0]].np_values
         if stderr is None:
             return UnivariateTimeSeries(time_stamps=times, values=(y - yhat), name="anom_score").to_ts()
+        sigma = stderr.univariates[stderr.names[0]].np_values
+        if np.isnan(sigma).all():
+            sigma = 1
         else:
-            sigma = stderr.univariates[stderr.names[0]].np_values
-            if np.isnan(sigma).all():
-                sigma = 1
-            else:
-                sigma[np.isnan(sigma)] = np.mean(sigma)
-            return UnivariateTimeSeries(
-                time_stamps=times, values=(y - yhat) / (sigma + 1e-8), name="anom_score"
-            ).to_ts()
+            sigma[np.isnan(sigma)] = np.mean(sigma)
+        return UnivariateTimeSeries(
+            time_stamps=times, values=(y - yhat) / (sigma + 1e-8), name="anom_score"
+        ).to_ts()
 
     def train(
         self, train_data: TimeSeries, anomaly_labels: TimeSeries = None, train_config=None, post_rule_train_config=None

@@ -116,12 +116,10 @@ def get_expert_output(expert_preds, free_expert_vals):
     :meta private:
     """
 
-    if free_expert_vals is not None:
-        free_expert_vals = free_expert_vals.unsqueeze(0)
-        expert_vals = free_expert_vals
-    else:
-        expert_vals = expert_preds
-    return expert_vals
+    if free_expert_vals is None:
+        return expert_preds
+    free_expert_vals = free_expert_vals.unsqueeze(0)
+    return free_expert_vals
 
 
 def get_expert_regression_loss(logits, expert_preds, free_expert_vals, targets):
@@ -349,11 +347,11 @@ class MoE_ForecasterEnsemble(EnsembleBase, ForecasterBase):
             )
             self.optimiser = torch.optim.Adam(self.moe_model.parameters(), lr=self.lr, weight_decay=0.00000)
             self.lr_sch = LRScheduler(lr_i=0.0000, lr_f=self.lr, nsteps=self.warmup_steps, optimizer=self.optimiser)
-        ## End of: make sure Pytorch model and optimizer are properly defined
-
-        # Train individual models on the training data
-        preds = []
         if len(self.models) > 0:
+            ## End of: make sure Pytorch model and optimizer are properly defined
+
+            # Train individual models on the training data
+            preds = []
             for i, model in enumerate(self.models):
                 logger.info(f"Training model {i+1}/{len(self.models)}...")
                 try:
@@ -388,7 +386,7 @@ class MoE_ForecasterEnsemble(EnsembleBase, ForecasterBase):
         :return: List (len = num of experts) of Lists. Each inner list contains tuple of predictions for full train_data
             for that expert.
         """
-        logger.info(f"Extracting and storing expert predictions")
+        logger.info("Extracting and storing expert predictions")
 
         dataset = myDataset(
             train_data,
@@ -427,15 +425,12 @@ class MoE_ForecasterEnsemble(EnsembleBase, ForecasterBase):
                     else:
                         raise e
 
-        final_expert_preds = []
         """  
         List (len = num of experts) of Lists. Each inner list contains tuple of preds for full train_data for 
             that expert. The sorted_preds function simply rearranges the list of preds so that the i'th index
             of final_expert_preds corresponds to the prediction of the i'th index of the data loader
         """
-        for i, expert_preds_i in enumerate(expert_preds):
-            final_expert_preds.append(sorted_preds(expert_preds_i))
-        return final_expert_preds
+        return [sorted_preds(expert_preds_i) for expert_preds_i in expert_preds]
 
     def finetune(self, train_data: TimeSeries, train_config: EnsembleTrainConfig = None):
         """
@@ -520,8 +515,13 @@ class MoE_ForecasterEnsemble(EnsembleBase, ForecasterBase):
         """
         expert_preds = []
         if len(self.models) > 0:
-            for model in self.models:
-                expert_preds.append(model.forecast(time_stamps=time_stamps, time_series_prev=time_series_prev)[0])
+            expert_preds.extend(
+                model.forecast(
+                    time_stamps=time_stamps, time_series_prev=time_series_prev
+                )[0]
+                for model in self.models
+            )
+
             expert_preds = [pred_i.to_pd().values for pred_i in expert_preds]
             expert_preds = torch.tensor(np.stack(expert_preds)).unsqueeze(0).squeeze(3)
             # expert_preds: B=1 x nexperts x max_forecast_steps

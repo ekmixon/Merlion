@@ -49,13 +49,12 @@ def dynamic_import(import_path: str, alias: dict = None):
         full import paths.
     :return: imported class
     """
-    alias = dict() if alias is None else alias
+    alias = {} if alias is None else alias
     if import_path not in alias and ":" not in import_path:
         raise ValueError(
-            "import_path should be one of {} or "
-            'include ":", e.g. "merlion.transform.normalize:MeanVarNormalize" : '
-            "got {}".format(set(alias), import_path)
+            f'import_path should be one of {set(alias)} or include ":", e.g. "merlion.transform.normalize:MeanVarNormalize" : got {import_path}'
         )
+
     if ":" not in import_path:
         import_path = alias[import_path]
 

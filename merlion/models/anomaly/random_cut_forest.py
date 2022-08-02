@@ -32,9 +32,9 @@ class JVMSingleton:
         import jpype
         import jpype.imports
 
-        resource_dir = join(dirname(dirname(dirname(abspath(__file__)))), "resources")
-        jars = ["gson-2.8.6.jar", "randomcutforest-core-1.0.jar", "randomcutforest-serialization-json-1.0.jar"]
         if not JVMSingleton._initialized:
+            resource_dir = join(dirname(dirname(dirname(abspath(__file__)))), "resources")
+            jars = ["gson-2.8.6.jar", "randomcutforest-core-1.0.jar", "randomcutforest-serialization-json-1.0.jar"]
             jpype.startJVM(classpath=[join(resource_dir, jar) for jar in jars])
             JVMSingleton._initialized = True
 
@@ -85,9 +85,11 @@ class RandomCutForestConfig(DetectorConfig):
 
     @property
     def _default_threshold(self):
-        if not self.enable_calibrator:
-            return AggregateAlarms(alm_threshold=self.calibrator.max_score / 5)
-        return AggregateAlarms(alm_threshold=3.0)
+        return (
+            AggregateAlarms(alm_threshold=3.0)
+            if self.enable_calibrator
+            else AggregateAlarms(alm_threshold=self.calibrator.max_score / 5)
+        )
 
     @property
     def java_params(self):

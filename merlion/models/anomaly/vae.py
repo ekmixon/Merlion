@@ -90,7 +90,7 @@ class VAE(DetectorBase):
         self.data_dim = None
 
     def _build_model(self, dim):
-        model = CVAE(
+        return CVAE(
             x_dim=dim * self.k,
             c_dim=0,
             encoder_hidden_sizes=self.encoder_hidden_sizes,
@@ -99,7 +99,6 @@ class VAE(DetectorBase):
             dropout_rate=self.dropout_rate,
             activation=self.activation,
         )
-        return model
 
     def _train(self, X):
         """
@@ -117,7 +116,7 @@ class VAE(DetectorBase):
         self.model.train()
         for epoch in range(self.num_epochs):
             total_loss = 0
-            for i, batch in enumerate(train_data):
+            for batch in train_data:
                 x = batch.to(self.device)
                 x = torch.flatten(x, start_dim=1)
                 recon_x, mu, log_var, _ = self.model(x, None)
@@ -316,7 +315,12 @@ def build_hidden_layers(input_size, hidden_sizes, dropout_rate, activation):
     hidden_layers = []
     for i in range(len(hidden_sizes)):
         s = input_size if i == 0 else hidden_sizes[i - 1]
-        hidden_layers.append(nn.Linear(s, hidden_sizes[i]))
-        hidden_layers.append(activation())
-        hidden_layers.append(nn.Dropout(dropout_rate))
+        hidden_layers.extend(
+            (
+                nn.Linear(s, hidden_sizes[i]),
+                activation(),
+                nn.Dropout(dropout_rate),
+            )
+        )
+
     return torch.nn.Sequential(*hidden_layers)

@@ -126,7 +126,6 @@ class AutoSarima(ForecasterAutoMLBase):
         start_Q = 1
         max_Q = 2
         relative_improve = 0
-        trend = None
         information_criterion = "aic"
 
         n_samples = y.shape[0]
@@ -201,9 +200,7 @@ class AutoSarima(ForecasterAutoMLBase):
                 max_p = min(max_p, m - 1)
             if max_Q > 0:
                 max_q = min(max_q, m - 1)
-        if (d + D) in (0, 1):
-            trend = "c"
-
+        trend = "c" if (d + D) in (0, 1) else None
         if n_samples < 10:
             start_p = min(start_p, 1)
             start_q = min(start_q, 1)
@@ -217,7 +214,7 @@ class AutoSarima(ForecasterAutoMLBase):
 
         refititer = maxiter
 
-        return_dict = dict(
+        return dict(
             y=y,
             X=X,
             p=p,
@@ -237,7 +234,7 @@ class AutoSarima(ForecasterAutoMLBase):
             max_Q=max_Q,
             trend=trend,
             method=method,
-            maxiter=maxiter,
+            refititer=refititer,
             information_criterion=information_criterion,
             relative_improve=relative_improve,
             approximation=approximation,
@@ -249,7 +246,6 @@ class AutoSarima(ForecasterAutoMLBase):
             order=order,
             seasonal_order=seasonal_order,
         )
-        return return_dict
 
     def generate_theta(self, train_data: TimeSeries) -> Iterator:
         """

@@ -145,10 +145,7 @@ class Prophet(ForecasterBase):
 
         if self.add_seasonality == "auto":
             periods = autosarima_utils.multiperiodicity_detection(series.np_values)
-            if len(periods) > 0:
-                max_periodicity = periods[-1]
-            else:
-                max_periodicity = 0
+            max_periodicity = periods[-1] if len(periods) > 0 else 0
             if max_periodicity > 1:
                 logger.info(f"Add seasonality {str(max_periodicity)}")
                 if hasattr(self.timedelta, "total_seconds"):

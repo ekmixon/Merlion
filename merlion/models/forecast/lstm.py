@@ -141,7 +141,7 @@ class _LSTMBase(nn.Module):
         outputs = []
         self.reset(bsz=input.size(0))
 
-        for i, input_t in enumerate(input.chunk(input.size(1), dim=1)):
+        for input_t in input.chunk(input.size(1), dim=1):
             self.h_t, self.c_t = self.lstm1(input_t, (self.h_t, self.c_t))
             self.h_t2, self.c_t2 = self.lstm2(self.h_t, (self.h_t2, self.c_t2))
             output = self.linear(self.h_t2)
@@ -233,8 +233,7 @@ def auto_stride(time_stamps, resolution=48):
     day_delta = datetime.timedelta(days=1).total_seconds()
     start_day = bisect.bisect_left(time_stamps, time_stamps[-1] - day_delta)
     day_stamps = len(time_stamps) - start_day
-    stride = day_stamps // resolution
-    return stride
+    return day_stamps // resolution
 
 
 class LSTM(ForecasterBase):

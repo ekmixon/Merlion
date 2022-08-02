@@ -135,17 +135,16 @@ class ForecasterEnsemble(EnsembleBase, ForecasterBase):
 
                 combined = self.train_combiner(preds, valid)
         except AssertionError as e:
-            if "None of `all_model_outs` can be `None`" in str(e):
-                nones = [m for m, p in zip(self.models, preds) if p is None]
-                raise RuntimeError(
-                    f"Training a {type(self.combiner).__name__} combiner "
-                    f"fitted model predictions for the training data, but "
-                    f"the following models' train() method doesn't return any: "
-                    f"{', '.join(type(m).__name__ for m in nones)}"
-                )
-            else:
+            if "None of `all_model_outs` can be `None`" not in str(e):
                 raise e
 
+            nones = [m for m, p in zip(self.models, preds) if p is None]
+            raise RuntimeError(
+                f"Training a {type(self.combiner).__name__} combiner "
+                f"fitted model predictions for the training data, but "
+                f"the following models' train() method doesn't return any: "
+                f"{', '.join(type(m).__name__ for m in nones)}"
+            )
         # No need to re-train if we didn't use a validation split
         if train is valid:
             err = None if any(e is None for e in errs) else self.combiner(errs, None)

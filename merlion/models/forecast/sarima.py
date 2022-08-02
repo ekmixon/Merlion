@@ -88,9 +88,7 @@ class Sarima(ForecasterBase, SeasonalityModel):
         if self.model is None:
             return 0
         orders = self.model.model_orders
-        if orders["reduced_ma"] > 0:
-            return 0
-        return 2 * orders["reduced_ar"] + 1
+        return 0 if orders["reduced_ma"] > 0 else 2 * orders["reduced_ar"] + 1
 
     def train(self, train_data: TimeSeries, train_config=None):
         # Train the transform & transform the training data
@@ -229,7 +227,6 @@ class Sarima(ForecasterBase, SeasonalityModel):
 
         order = list(self.config.order)
         seasonal_order = list(self.config.seasonal_order)
-        max_d = 2
         max_D = 1
         stationary = False
         seasonal_test = "seas"
@@ -249,11 +246,7 @@ class Sarima(ForecasterBase, SeasonalityModel):
             raise ValueError("there exists missing values in observed time series")
 
         # check m
-        if theta < 1:
-            theta = 1
-        else:
-            theta = int(theta)
-
+        theta = 1 if theta < 1 else int(theta)
         # input time-series is completely constant
         if np.max(y) == np.min(y):
             return iter([0])
@@ -271,15 +264,13 @@ class Sarima(ForecasterBase, SeasonalityModel):
                 dx = autosarima_utils.diff(xx, differences=D, lag=theta)
                 if dx.shape[0] == 0:
                     D = D - 1
-        if D > 0:
-            dx = autosarima_utils.diff(xx, differences=D, lag=theta)
-        else:
-            dx = xx
+        dx = autosarima_utils.diff(xx, differences=D, lag=theta) if D > 0 else xx
         logger.info(f"Seasonal difference order is {str(D)}")
 
         #  set the differencing order by estimating the number of orders
         #  it would take in order to make the time series stationary
         if d is None:
+            max_d = 2
             d = autosarima_utils.ndiffs(dx, alpha=0.05, max_d=max_d, test=test)
         if d > 0:
             dx = autosarima_utils.diff(dx, differences=d, lag=1)

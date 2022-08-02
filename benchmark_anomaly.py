@@ -182,7 +182,7 @@ def dataset_to_threshold(dataset: TSADBaseDataset, tune_on_test=False):
     elif isinstance(dataset, SMAP):
         return 3.5
     elif isinstance(dataset, SMD):
-        return 3 if not tune_on_test else 2.5
+        return 2.5 if tune_on_test else 3
     elif hasattr(dataset, "default_threshold"):
         return dataset.default_threshold
     return 3
@@ -245,10 +245,7 @@ def get_model(
 def df_to_merlion(df: pd.DataFrame, md: pd.DataFrame, get_ground_truth=False, transform=None) -> TimeSeries:
     """Converts a pandas dataframe time series to the Merlion format."""
     if get_ground_truth:
-        if False and "changepoint" in md.keys():
-            series = md["anomaly"] | md["changepoint"]
-        else:
-            series = md["anomaly"]
+        series = md["anomaly"] | md["changepoint"] if False else md["anomaly"]
     else:
         series = df
     time_series = TimeSeries.from_pd(series)

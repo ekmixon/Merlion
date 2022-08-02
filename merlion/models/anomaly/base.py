@@ -200,7 +200,7 @@ class DetectorBase(ModelBase):
             if post_rule_train_config is not None:
                 kwargs.update(post_rule_train_config)
             params = inspect.signature(self.post_rule.train).parameters
-            if not any(v.kind.name == "VAR_KEYWORD" for v in params.values()):
+            if all(v.kind.name != "VAR_KEYWORD" for v in params.values()):
                 kwargs = {k: v for k, v in kwargs.items() if k in params}
             self.post_rule.train(anomaly_scores=anomaly_scores, anomaly_labels=anomaly_labels, **kwargs)
 

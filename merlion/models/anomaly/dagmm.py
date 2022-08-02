@@ -87,13 +87,16 @@ class DAGMM(DetectorBase):
 
     def _build_model(self, dim):
         hidden_size = self.hidden_size + int(dim / 20)
-        dagmm = DAGMMModule(
-            autoencoder=AEModule(n_features=dim, sequence_length=self.sequence_length, hidden_size=hidden_size),
+        return DAGMMModule(
+            autoencoder=AEModule(
+                n_features=dim,
+                sequence_length=self.sequence_length,
+                hidden_size=hidden_size,
+            ),
             n_gmm=self.gmm_k,
             latent_dim=hidden_size + 2,
             device=self.device,
         )
-        return dagmm
 
     def _step(self, input_data, max_grad_norm=5):
         enc, dec, z, gamma = self.dagmm(input_data)

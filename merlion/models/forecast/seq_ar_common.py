@@ -23,9 +23,7 @@ def process_one_step_prior(data: TimeSeries, maxlags: int, sampling_mode="normal
     data = data.align()
     data = data[-maxlags:]
     if sampling_mode == "normal":
-        inputs = []
-        for uni in data.univariates:
-            inputs.append(uni.values)
+        inputs = [uni.values for uni in data.univariates]
         return np.concatenate(inputs, axis=0)
     elif sampling_mode == "stats":
         inputs = []
@@ -48,9 +46,7 @@ def process_one_step_prior_for_autoregression(data: TimeSeries, maxlags: int, sa
     """
     data = data.align()
     data = data[-maxlags:]
-    inputs = []
-    for uni in data.univariates:
-        inputs.append(uni.values)
+    inputs = [uni.values for uni in data.univariates]
     inputs = np.concatenate(inputs, axis=0)
 
     if sampling_mode == "normal":
@@ -180,17 +176,16 @@ def update_prior_nd(prior: np.ndarray, next_forecast: np.ndarray, num_seq: int, 
     prior = np.concatenate([prior, next_forecast], axis=2)[:, :, -maxlags:]
     if sampling_mode != "stats":
         return prior.reshape(len(prior), -1), None
-    else:
-        stats = np.concatenate(
-            [
-                np.max(prior, axis=2, keepdims=True),
-                np.min(prior, axis=2, keepdims=True),
-                np.std(prior, axis=2, keepdims=True, ddof=1),
-                np.median(prior, axis=2, keepdims=True),
-            ],
-            axis=2,
-        )
-        return prior.reshape(len(prior), -1), stats.reshape(len(stats), -1)
+    stats = np.concatenate(
+        [
+            np.max(prior, axis=2, keepdims=True),
+            np.min(prior, axis=2, keepdims=True),
+            np.std(prior, axis=2, keepdims=True, ddof=1),
+            np.median(prior, axis=2, keepdims=True),
+        ],
+        axis=2,
+    )
+    return prior.reshape(len(prior), -1), stats.reshape(len(stats), -1)
 
 
 def update_prior_1d(prior: np.ndarray, next_forecast: np.ndarray, maxlags: int):

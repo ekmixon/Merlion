@@ -51,11 +51,13 @@ def diff(x, lag=1, differences=1):
         raise ValueError("differences should be smaller than the length of array")
 
     res = x
-    for i in range(differences):
-        if res.ndim == 1:  # compute the lag for vector
-            res = res[lag : res.shape[0]] - res[: res.shape[0] - lag]
-        else:
-            res = res[lag : res.shape[0], :] - res[: res.shape[0] - lag, :]
+    for _ in range(differences):
+        res = (
+            res[lag : res.shape[0]] - res[: res.shape[0] - lag]
+            if res.ndim == 1
+            else res[lag : res.shape[0], :] - res[: res.shape[0] - lag, :]
+        )
+
     return res
 
 
@@ -144,9 +146,8 @@ def _refit_sarima_model(model_fitted, approx_ic, method, inititer, maxiter, info
                 cur_ic = _root_test(model_fitted, cur_ic)
                 if cur_ic > ic or np.isinf(cur_ic):
                     break
-                else:
-                    ic = cur_ic
-                    best_fit = model_fitted
+                ic = cur_ic
+                best_fit = model_fitted
             fit_time = time.time() - start
             logger.debug(
                 "{model}   : Iter={iter:d}, {ic_name}={ic:.3f}, Time={time:.2f} sec".format(
@@ -166,11 +167,7 @@ def detect_maxiter_sarima_model(y, X, d, D, m, method, information_criterion):
     """
     logger.debug("Automatically detect the maxiter")
     order = (2, d, 2)
-    if m == 1:
-        seasonal_order = (0, 0, 0, 0)
-    else:
-        seasonal_order = (1, D, 1, m)
-
+    seasonal_order = (0, 0, 0, 0) if m == 1 else (1, D, 1, m)
     # default setting of maxiter is 10
     start = time.time()
     fit_time = np.nan
@@ -200,17 +197,16 @@ def detect_maxiter_sarima_model(y, X, d, D, m, method, information_criterion):
                 cur_ic = _root_test(model_fit, cur_ic)
                 if cur_ic > ic or np.isinf(cur_ic):
                     break
-                else:
-                    ic = cur_ic
-                    maxiter = cur_iter
-                    logger.debug(
-                        "Zero model: {model} Iter={iter:d}, {ic_name}={ic:.3f}".format(
-                            model=_model_name(model_fit.model),
-                            iter=maxiter,
-                            ic_name=information_criterion.upper(),
-                            ic=ic,
-                        )
+                ic = cur_ic
+                maxiter = cur_iter
+                logger.debug(
+                    "Zero model: {model} Iter={iter:d}, {ic_name}={ic:.3f}".format(
+                        model=_model_name(model_fit.model),
+                        iter=maxiter,
+                        ic_name=information_criterion.upper(),
+                        ic=ic,
                     )
+                )
         fit_time = time.time() - start
         logger.debug(
             "Zero model: {model} Iter={iter:d}, {ic_name}={ic:.3f}, Time={time:.2f} sec".format(
@@ -252,12 +248,12 @@ def multiperiodicity_detection(x, max_lag=None):
     xacf = xacf[1:]
     clim = tcrit / np.sqrt(x.shape[0]) * np.sqrt(np.cumsum(np.insert(np.square(xacf) * 2, 0, 1)))
 
-    # statistical test if acf is significant w.r.t a normal distribution
-    candidate_filter = []
-    for candidate in candidates:
-        if np.abs(xacf[candidate - 1]) > clim[candidate - 1] and candidate * 3 < x.shape[0]:
-            candidate_filter.append(candidate)
-    return candidate_filter
+    return [
+        candidate
+        for candidate in candidates
+        if np.abs(xacf[candidate - 1]) > clim[candidate - 1]
+        and candidate * 3 < x.shape[0]
+    ]
 
 
 def seas_seasonalstationaritytest(x, m):
@@ -414,13 +410,13 @@ class _StepwiseFitWrapper:
 
         # results stored in dict
         # dict[tuple -> ARIMA]
-        self.results_dict = dict()
+        self.results_dict = {}
 
         # dict[tuple -> float]
-        self.ic_dict = dict()
+        self.ic_dict = {}
 
         # dict[tuple -> float]
-        self.fit_time_dict = dict()
+        self.fit_time_dict = {}
         self.bestfit = None
         self.bestfit_key = None
 
@@ -449,10 +445,7 @@ class _StepwiseFitWrapper:
                 logger.debug("New best model found (%.3f < %.3f)" % (new_ic, current_ic))
                 self.bestfit = fit
                 self.bestfit_key = (order, seasonal_order, constant)
-                if new_ic < current_ic * (1 - self.relative_improve):
-                    return True
-                else:
-                    return False
+                return new_ic < current_ic * (1 - self.relative_improve)
         return False
 
     def stepwisesearch(self):

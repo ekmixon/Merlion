@@ -52,10 +52,7 @@ class SeasonalityLayer(ForecasterAutoMLBase, ABC):
 
         periods = autosarima_utils.multiperiodicity_detection(y)
         if len(periods) > 0:
-            if periodicity_strategy == "min":
-                m = periods[0]
-            else:
-                m = periods[-1]
+            m = periods[0] if periodicity_strategy == "min" else periods[-1]
         else:
             m = 1
         logger.info(f"Automatically detect the periodicity is {str(m)}")

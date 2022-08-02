@@ -227,10 +227,7 @@ class UnivariateTimeSeries(pd.Series):
         :return: the left and right splits of the time series.
         """
         t = to_pd_datetime(t)
-        if t_in_left:
-            i = bisect_right(self.index, t)
-        else:
-            i = bisect_left(self.index, t)
+        i = bisect_right(self.index, t) if t_in_left else bisect_left(self.index, t)
         return self[:i], self[i:]
 
     def window(self, t0: float, tf: float, include_tf: bool = False):
@@ -599,9 +596,7 @@ class TimeSeries:
         :return: a `UnivariateTimeSeries` if the time series only
             has one univariate, otherwise returns itself, a `TimeSeries`
         """
-        if self.dim == 1:
-            return self.univariates[self.names[0]]
-        return self
+        return self.univariates[self.names[0]] if self.dim == 1 else self
 
     def __len__(self):
         """
@@ -674,14 +669,13 @@ class TimeSeries:
         left, right = ValIterOrderedDict(), ValIterOrderedDict()
         for name, var in self.items():
             left[name], right[name] = var.bisect(t, t_in_left)
-        if self.is_aligned:
-            left = TimeSeries(left, check_aligned=False)
-            right = TimeSeries(right, check_aligned=False)
-            left._is_aligned = True
-            right._is_aligned = True
-            return left, right
-        else:
+        if not self.is_aligned:
             return TimeSeries(left), TimeSeries(right)
+        left = TimeSeries(left, check_aligned=False)
+        right = TimeSeries(right, check_aligned=False)
+        left._is_aligned = True
+        right._is_aligned = True
+        return left, right
 
     def window(self, t0: float, tf: float, include_tf: bool = False):
         """
@@ -974,7 +968,7 @@ def ts_csv_load(file_name: str, ms=True, n_vars=None) -> TimeSeries:
             words = line.strip().split(",")
             stamp, vals = int(words[0]), words[1:]
             if ms:
-                stamp = stamp / 1000
+                stamp /= 1000
             stamps += [stamp]
             for name, val in zip(names, vals):
                 vars[name] += [float(val)]
@@ -1012,7 +1006,8 @@ def assert_equal_timedeltas(time_series: UnivariateTimeSeries, timedelta: float 
 
         assert (
             np.abs(timedeltas - timedeltas[0]).max() < 2e-3
-        ), f"Data must be sampled with the same time difference between each element of the time series"
+        ), "Data must be sampled with the same time difference between each element of the time series"
+
         assert np.abs(timedeltas[0] - timedelta) < 2e-3, (
             f"Expected data to be sampled every {timedelta} seconds, but time "
             f"series is sampled every {timedeltas[0]} seconds instead."

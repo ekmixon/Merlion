@@ -113,10 +113,7 @@ class ETS(ForecasterBase):
 
         if self.seasonal_periods == "auto":
             periods = autosarima_utils.multiperiodicity_detection(train_data.to_numpy())
-            if len(periods) > 0:
-                min_periodicty = periods[0]
-            else:
-                min_periodicty = 0
+            min_periodicty = periods[0] if len(periods) > 0 else 0
             if min_periodicty > 1:
                 logger.info(f"Detect seasonality {str(min_periodicty)}")
                 self.config.seasonal_periods = min_periodicty.item()

@@ -22,10 +22,7 @@ class InputData(Dataset):
         assert k >= 1
 
         n = time_series.shape[0]
-        if not window_based:
-            self.num_samples = n - k + 1
-        else:
-            self.num_samples = n // k
+        self.num_samples = n // k if window_based else n - k + 1
 
     def __len__(self):
         return self.num_samples
@@ -33,9 +30,8 @@ class InputData(Dataset):
     def __getitem__(self, index):
         if not self.window_based:
             return self.time_series[index : index + self.k, :]
-        else:
-            i = index * self.k
-            return self.time_series[i : i + self.k, :]
+        i = index * self.k
+        return self.time_series[i : i + self.k, :]
 
     @staticmethod
     def collate_func(samples, shuffle=False):

@@ -111,10 +111,13 @@ class MultiVariateAutoRegressionMixin:
         (time_series_prev_no_ts, stats_prev_no_ts) = seq_ar_common.process_one_step_prior_for_autoregression(
             time_series_prev, maxlags, sampling_mode
         )
-        yhat = self._autoregressive_forecast(
-            time_series_prev_no_ts, stats_prev_no_ts, maxlags=maxlags, steps=forecast_steps, sampling_mode=sampling_mode
+        return self._autoregressive_forecast(
+            time_series_prev_no_ts,
+            stats_prev_no_ts,
+            maxlags=maxlags,
+            steps=forecast_steps,
+            sampling_mode=sampling_mode,
         ).reshape(-1)
-        return yhat
 
     def _autoregressive_forecast(self, inputs, stats, maxlags: int, steps: [int, None], sampling_mode: str = "normal"):
         """

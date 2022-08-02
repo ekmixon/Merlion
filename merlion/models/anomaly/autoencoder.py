@@ -78,8 +78,11 @@ class AutoEncoder(DetectorBase):
         self.data_dim = None
 
     def _build_model(self, dim):
-        model = AEModule(input_size=dim * self.k, hidden_size=self.hidden_size, layer_sizes=self.layer_sizes)
-        return model
+        return AEModule(
+            input_size=dim * self.k,
+            hidden_size=self.hidden_size,
+            layer_sizes=self.layer_sizes,
+        )
 
     def _train(self, X):
         """
@@ -96,7 +99,7 @@ class AutoEncoder(DetectorBase):
         self.model.train()
         for epoch in range(self.num_epochs):
             total_loss = 0
-            for i, batch in enumerate(train_data):
+            for batch in train_data:
                 batch = batch.to(self.device)
                 loss = self.model.loss(batch)
                 optimizer.zero_grad()
@@ -209,8 +212,7 @@ class AEModule(nn.Module):
     def loss(self, x):
         x = torch.flatten(x, start_dim=1)
         y = self.decoder(self.encoder(x))
-        loss = self.loss_func(y, x)
-        return loss
+        return self.loss_func(y, x)
 
 
 class MLP(nn.Module):

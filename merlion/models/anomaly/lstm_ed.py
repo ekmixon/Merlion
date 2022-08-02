@@ -123,7 +123,7 @@ class LSTMED(DetectorBase):
         )
         self.lstmed.eval()
         scores, outputs = [], []
-        for idx, batch in enumerate(data_loader):
+        for batch in data_loader:
             batch = batch.to(self.device)
             output = self.lstmed(batch)
             error = nn.L1Loss(reduction="none")(output, batch.float())

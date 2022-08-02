@@ -46,7 +46,7 @@ def override_config(config, config_dict, return_unused_kwargs=False, **kwargs):
         if key not in kwargs and not hasattr(config, key):
             kwargs[key] = value
 
-    if len(kwargs) > 0 and not return_unused_kwargs:
+    if kwargs and not return_unused_kwargs:
         logger.warning(f"Unused kwargs: {kwargs}", stack_info=True)
     elif return_unused_kwargs:
         return config, kwargs

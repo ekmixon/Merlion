@@ -159,7 +159,7 @@ class EnsembleBase(ModelBase, ABC):
                 horizons.append(h)
         if all(h is None for h in horizons):
             return None
-        return min([h for h in horizons if h is not None])
+        return min(h for h in horizons if h is not None)
 
     def truncate_valid_data(self, transformed_valid_data: TimeSeries):
         tf = transformed_valid_data.tf

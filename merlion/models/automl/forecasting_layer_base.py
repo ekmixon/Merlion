@@ -73,15 +73,12 @@ class ForecasterAutoMLBase(ForecasterBase, LayerMixIn, ABC):
         state_dict = self.__getstate__()
         state_dict.pop("model")
         model_path = os.path.abspath(join(dirname, self.filename))
-        config_dict = dict()
-
         # create the directory if needed
         os.makedirs(dirname, exist_ok=True)
 
         underlying_model_path = os.path.abspath(os.path.join(dirname, "model"))
         self.model.save(underlying_model_path)
-        config_dict["model_name"] = type(self.model).__name__
-
+        config_dict = {"model_name": type(self.model).__name__}
         with open(os.path.join(dirname, self.config_class.filename), "w") as f:
             json.dump(config_dict, f, indent=2, sort_keys=True)
 
